@@ -1,0 +1,463 @@
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 1rem 1rem 5.5rem;
+  box-sizing: border-box;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 0 0.75rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #8b5cf6;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topbar h1 {
+  margin: 0.15rem 0 0;
+  font-size: clamp(1.9rem, 5vw, 2.5rem);
+}
+
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(139, 92, 246, 0.12);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.content {
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
+}
+
+.hero-card,
+.execution-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.1rem;
+}
+
+.execution-card {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(6, 182, 212, 0.08));
+}
+
+.badge,
+.series-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.series-badge {
+  background: rgba(139, 92, 246, 0.14);
+  color: var(--text-strong);
+}
+
+.hero-card h2,
+.execution-card h2,
+.section-block h3 {
+  margin: 0.6rem 0 0.25rem;
+  font-size: 1.45rem;
+}
+
+.hero-card p,
+.section-block p,
+.exercise-row span,
+.mini-card span,
+.workout-card span {
+  color: var(--text-muted);
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button,
+.small-button,
+.bottom-nav button,
+.segmented button {
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.primary-button:active,
+.secondary-button:active,
+.ghost-button:active,
+.small-button:active,
+.bottom-nav button:active,
+.segmented button:active {
+  transform: scale(0.98);
+}
+
+.primary-button {
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+  color: white;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.section-block {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ghost-button,
+.secondary-button,
+.small-button {
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  font-weight: 700;
+}
+
+.ghost-button {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--text-strong);
+}
+
+.secondary-button {
+  width: 100%;
+  background: var(--button-soft);
+  color: var(--text-strong);
+}
+
+.list-stack,
+.history-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.mini-card,
+.exercise-row,
+.workout-card,
+.config-card,
+.metric,
+.stats-panel,
+.workout-editor,
+.exercise-detail,
+.editing-panel {
+  padding: 0.9rem 1rem;
+}
+
+.mini-card,
+.exercise-row,
+.workout-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.small-button.danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.workout-editor,
+.exercise-detail,
+.editing-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.field-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.field-grid label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.field-grid input {
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: var(--input-bg);
+  color: var(--text-strong);
+}
+
+.exercise-detail ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--text-muted);
+}
+
+.workout-card {
+  cursor: pointer;
+}
+
+.workout-card.active {
+  border-color: rgba(139, 92, 246, 0.7);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.mini-card strong,
+.exercise-row strong,
+.workout-card strong {
+  display: block;
+  color: var(--text-strong);
+}
+
+.search {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+  background: var(--input-bg);
+  color: var(--text-strong);
+  padding: 0.9rem 1rem;
+  font-size: 1rem;
+}
+
+.small-button {
+  min-width: 44px;
+  padding: 0.7rem 0.8rem;
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.metric {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.metric label,
+.config-card label,
+.stats-panel span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.metric strong,
+.config-card strong,
+.stats-panel strong {
+  font-size: 1rem;
+  color: var(--text-strong);
+}
+
+.stats-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.stats-panel > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.execution-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 16px;
+}
+
+.rest-panel {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.rest-panel.idle {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.rest-panel span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rest-panel strong {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--text-strong);
+}
+
+.rest-panel small {
+  color: var(--text-muted);
+}
+
+.execution-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.config-panel {
+  gap: 0.9rem;
+}
+
+.config-card {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.backup-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.danger-card {
+  border-color: rgba(239, 68, 68, 0.22);
+}
+
+.danger-button {
+  border: none;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  padding: 0.85rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.file-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segmented {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.segmented button {
+  flex: 1;
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: var(--button-soft);
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.segmented button.active,
+.bottom-nav button.active {
+  background: rgba(139, 92, 246, 0.18);
+  color: var(--text-strong);
+}
+
+.empty-state {
+  padding: 1rem;
+  color: var(--text-muted);
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 0.8rem;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 1.5rem));
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 20px;
+  background: var(--nav-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-soft);
+}
+
+.bottom-nav button {
+  padding: 0.8rem 0.5rem;
+  background: transparent;
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+}
+
+@media (max-width: 420px) {
+  .grid-3,
+  .stats-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell {
+    padding-bottom: 6.2rem;
+  }
+}

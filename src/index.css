@@ -1,0 +1,62 @@
+:root {
+  --bg: #f5f7fb;
+  --bg-strong: #ffffff;
+  --card-bg: rgba(255, 255, 255, 0.8);
+  --card-border: rgba(148, 163, 184, 0.22);
+  --text-strong: #101828;
+  --text-muted: #526071;
+  --button-soft: #eef2ff;
+  --nav-bg: rgba(255, 255, 255, 0.82);
+  --input-bg: rgba(15, 23, 42, 0.02);
+  --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
+  font-family: Inter, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--text-strong);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='dark'] {
+  --bg: #090d18;
+  --bg-strong: #111827;
+  --card-bg: rgba(15, 23, 42, 0.75);
+  --card-border: rgba(148, 163, 184, 0.2);
+  --text-strong: #f4f7fb;
+  --text-muted: #a4b0c0;
+  --button-soft: rgba(148, 163, 184, 0.12);
+  --nav-bg: rgba(15, 23, 42, 0.88);
+  --input-bg: rgba(148, 163, 184, 0.06);
+  --shadow-soft: 0 20px 45px rgba(2, 6, 23, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at top, rgba(139, 92, 246, 0.15), transparent 25%),
+    var(--bg);
+  color: var(--text-strong);
+}
+
+button, input {
+  font: inherit;
+}
+
+button {
+  appearance: none;
+}
+
+h1, h2, h3, p {
+  margin-top: 0;
+}
