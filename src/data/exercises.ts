@@ -1,1 +1,1 @@
-export { workoutGuideExercises as initialExercises } from './workoutGuideExercises'
+export { workoutGuideExercises as initialExercises } from '../lib/workoutGuideAdapter'

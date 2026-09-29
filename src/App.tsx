@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
+import { ExerciseAnimation } from './components/ExerciseAnimation'
 import { defaultWorkout } from './data/defaultWorkout'
 import { initialExercises } from './data/exercises'
 import {
@@ -193,7 +194,6 @@ function App() {
       return
     }
 
-    setCurrentSetIndex((current) => current + 1)
     setPhase('running')
   }, [phase, restSeconds, currentExerciseIndex, currentSetIndex, selectedWorkoutId, workouts])
 
@@ -350,8 +350,9 @@ function App() {
 
   const completeCurrentSet = () => {
     if (!selectedWorkout || !currentExercise) return
-    const remainingSets = currentExercise.sets - currentSetIndex
-    if (remainingSets <= 0) {
+
+    const isLastSetOfExercise = currentSetIndex >= currentExercise.sets
+    if (isLastSetOfExercise) {
       const nextExerciseIndex = currentExerciseIndex + 1
       if (nextExerciseIndex < selectedWorkout.exercises.length) {
         setCurrentExerciseIndex(nextExerciseIndex)
@@ -363,6 +364,7 @@ function App() {
       return
     }
 
+    setCurrentSetIndex((current) => current + 1)
     setPhase('rest')
     setRestSeconds(currentExercise.rest || 60)
   }
@@ -706,9 +708,7 @@ function App() {
 
               {selectedExercise && (
                 <div className="card exercise-detail">
-                  <div className="exercise-media">
-                    <img src={selectedExercise.videoFrames?.[frameIndex % Math.max(selectedExercise.videoFrames.length, 1)] ?? selectedExercise.imageUrl ?? '/icons.svg'} alt={selectedExercise.name} />
-                  </div>
+                  <ExerciseAnimation exercise={selectedExercise} />
                   <div className="detail-header">
                     <strong>{selectedExercise.name}</strong>
                     <span>{selectedExercise.category} · {selectedExercise.muscleGroup} · {selectedExercise.type}</span>

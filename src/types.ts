@@ -26,10 +26,24 @@ export type ExerciseAttribution = {
   changes?: string
 }
 
+export type ExerciseType =
+  | 'weight_reps'
+  | 'bodyweight_reps'
+  | 'duration'
+  | 'distance_duration'
+  | 'assisted_bodyweight'
+  | 'other'
+
+export type ExerciseFrame = {
+  index: 1 | 2 | 3
+  path: string
+}
+
 export type Exercise = {
   id: string
   slug?: string
   name: string
+  displayName?: string
   category: string
   muscleGroup: string
   equipment: string
@@ -44,7 +58,19 @@ export type Exercise = {
   animationUrl?: string
   videoUrl?: string
   isCustom?: boolean
+  isFavorite?: boolean
+  createdAt?: string
+  exerciseType?: ExerciseType
+  primaryMuscle?: string
+  secondaryMuscles?: string[]
+  isStretch?: boolean
+  frames?: ExerciseFrame[]
   attribution?: ExerciseAttribution
+  metadata?: {
+    equipmentOriginal?: string
+    primaryMuscleOriginal?: string
+    exerciseTypeLabel?: string
+  }
 }
 
 export type WorkoutExercise = {
