@@ -1,8 +1,34 @@
 export type ThemeMode = 'light' | 'dark'
 export type UnitSystem = 'kg' | 'lb'
+export type DemoMode = 'always' | 'compact' | 'hidden'
+
+export type Profile = {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type AppSettings = {
+  demoMode: DemoMode
+  wakeLockEnabled: boolean
+}
+
+export type ExerciseAttribution = {
+  creator: string
+  creatorUrl?: string
+  license: string
+  licenseUrl?: string
+  sourceName?: string
+  sourceUrl?: string
+  sourceLicense?: string
+  sourceLicenseUrl?: string
+  changes?: string
+}
 
 export type Exercise = {
   id: string
+  slug?: string
   name: string
   category: string
   muscleGroup: string
@@ -13,7 +39,12 @@ export type Exercise = {
   instructions: string[]
   tips: string[]
   errors: string[]
+  imageUrl?: string
+  videoFrames?: string[]
+  animationUrl?: string
+  videoUrl?: string
   isCustom?: boolean
+  attribution?: ExerciseAttribution
 }
 
 export type WorkoutExercise = {

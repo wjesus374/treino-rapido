@@ -4,15 +4,19 @@ import { defaultWorkout } from './data/defaultWorkout'
 import { initialExercises } from './data/exercises'
 import {
   getExercises,
+  getProfile,
+  getSettings,
   getSessions,
   getTheme,
   getWorkouts,
   saveExercises,
+  saveProfile,
   saveSessions,
+  saveSettings,
   saveTheme,
   saveWorkouts,
 } from './lib/storage'
-import type { Exercise, Workout, WorkoutExercise, WorkoutSession } from './types'
+import type { AppSettings, Exercise, Profile, Workout, WorkoutExercise, WorkoutSession } from './types'
 
 const formatSeconds = (seconds: number) => {
   const total = Math.max(0, seconds)
@@ -23,6 +27,18 @@ const formatSeconds = (seconds: number) => {
 
 type WorkoutPhase = 'ready' | 'running' | 'paused' | 'rest' | 'finished'
 
+const defaultProfile: Profile = {
+  id: 'profile-local',
+  name: '',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
+
+const defaultSettings: AppSettings = {
+  demoMode: 'always',
+  wakeLockEnabled: false,
+}
+
 const createExercise = (): Exercise => ({
   id: `custom-${Date.now()}`,
   name: 'Novo exercício',
@@ -31,11 +47,24 @@ const createExercise = (): Exercise => ({
   equipment: 'Máquina',
   difficulty: 'Iniciante',
   type: 'Musculação',
-  description: 'Exercício personalizado',
-  instructions: ['Posicione corretamente.', 'Execute com controle.'],
-  tips: ['Mantenha a postura.'],
-  errors: ['Evite impulsos.'],
+  description: 'Exercício personalizado.',
+  instructions: ['Posicione-se corretamente.', 'Controle a execução.'],
+  tips: ['Mantenha a postura.', 'Respire no tempo do movimento.'],
+  errors: ['Evite impulso.', 'Não force o ROM.'],
+  imageUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=80',
+  videoFrames: [
+    'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=80',
+  ],
   isCustom: true,
+  attribution: {
+    creator: 'Usuário local',
+    creatorUrl: '',
+    license: 'Uso local',
+    licenseUrl: '',
+    sourceName: 'Cadastro do usuário',
+    sourceUrl: '',
+  },
 })
 
 const createSession = (workout: Workout, elapsedSeconds: number): WorkoutSession => ({
@@ -51,6 +80,11 @@ const createSession = (workout: Workout, elapsedSeconds: number): WorkoutSession
 
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(getTheme())
+  const [profile, setProfile] = useState<Profile>(() => {
+    const stored = getProfile()
+    return stored.name ? stored : { ...defaultProfile, ...stored }
+  })
+  const [settings, setSettings] = useState<AppSettings>(() => ({ ...defaultSettings, ...getSettings() }))
   const [exercises, setExercises] = useState<Exercise[]>(() => {
     const stored = getExercises()
     return stored.length ? stored : initialExercises
@@ -64,6 +98,7 @@ function App() {
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<'inicio' | 'treinos' | 'evolucao' | 'config'>('inicio')
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(initialExercises[0]?.id ?? null)
+  const [exerciseDraft, setExerciseDraft] = useState<Exercise | null>(null)
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null)
   const [isWorkoutActive, setIsWorkoutActive] = useState(false)
   const [phase, setPhase] = useState<WorkoutPhase>('ready')
@@ -71,11 +106,20 @@ function App() {
   const [currentSetIndex, setCurrentSetIndex] = useState(1)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [restSeconds, setRestSeconds] = useState(0)
+  const [frameIndex, setFrameIndex] = useState(0)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     saveTheme(theme)
   }, [theme])
+
+  useEffect(() => {
+    saveProfile(profile)
+  }, [profile])
+
+  useEffect(() => {
+    saveSettings(settings)
+  }, [settings])
 
   useEffect(() => {
     saveExercises(exercises)
@@ -93,16 +137,8 @@ function App() {
     if (!isWorkoutActive || (phase !== 'running' && phase !== 'rest')) return
 
     const timer = window.setInterval(() => {
-      if (phase === 'running') {
-        setElapsedSeconds((current) => current + 1)
-      }
-
-      if (phase === 'rest') {
-        setRestSeconds((current) => {
-          const next = Math.max(0, current - 1)
-          return next
-        })
-      }
+      if (phase === 'running') setElapsedSeconds((current) => current + 1)
+      if (phase === 'rest') setRestSeconds((current) => Math.max(0, current - 1))
     }, 1000)
 
     return () => window.clearInterval(timer)
@@ -135,7 +171,6 @@ function App() {
     const term = search.toLowerCase()
     return exercises.filter((exercise) => {
       if (!term) return true
-
       return [exercise.name, exercise.category, exercise.muscleGroup, exercise.equipment].some((field) =>
         field.toLowerCase().includes(term),
       )
@@ -146,16 +181,21 @@ function App() {
   const currentExercise = selectedWorkout?.exercises[currentExerciseIndex]
   const selectedExercise = exercises.find((exercise) => exercise.id === selectedExerciseId) ?? exercises[0]
 
+  const selectedFrames = selectedExercise?.videoFrames?.length ? selectedExercise.videoFrames : [selectedExercise?.imageUrl ?? '/icons.svg']
+
+  useEffect(() => {
+    if (!selectedFrames || selectedFrames.length <= 1) return
+    const intervalId = window.setInterval(() => {
+      setFrameIndex((current) => (current + 1) % selectedFrames.length)
+    }, 900)
+    return () => window.clearInterval(intervalId)
+  }, [selectedFrames])
+
   const updateWorkoutExercise = (exerciseId: string, patch: Partial<WorkoutExercise>) => {
     setWorkouts((current) =>
       current.map((workout) =>
         workout.id === selectedWorkoutId
-          ? {
-              ...workout,
-              exercises: workout.exercises.map((exercise) =>
-                exercise.id === exerciseId ? { ...exercise, ...patch } : exercise,
-              ),
-            }
+          ? { ...workout, exercises: workout.exercises.map((exercise) => (exercise.id === exerciseId ? { ...exercise, ...patch } : exercise)) }
           : workout,
       ),
     )
@@ -173,7 +213,6 @@ function App() {
 
   const addExerciseToWorkout = (exercise: Exercise | undefined) => {
     if (!exercise || !selectedWorkout) return
-
     const nextExercise: WorkoutExercise = {
       id: `${selectedWorkout.id}-${exercise.id}-${Date.now()}`,
       exerciseId: exercise.id,
@@ -184,19 +223,37 @@ function App() {
       rest: 60,
       notes: '',
     }
-
     setWorkouts((current) =>
       current.map((workout) =>
-        workout.id === selectedWorkout.id
-          ? { ...workout, exercises: [...workout.exercises, nextExercise] }
-          : workout,
+        workout.id === selectedWorkout.id ? { ...workout, exercises: [...workout.exercises, nextExercise] } : workout,
       ),
     )
   }
 
   const addCustomExercise = () => {
-    const exercise = createExercise()
-    setExercises((current) => [exercise, ...current])
+    const newExercise = createExercise()
+    setExercises((current) => [newExercise, ...current])
+    setSelectedExerciseId(newExercise.id)
+    setExerciseDraft(newExercise)
+  }
+
+  const commitExerciseEdit = () => {
+    if (!exerciseDraft) return
+    setExercises((current) => current.map((item) => (item.id === exerciseDraft.id ? { ...item, ...exerciseDraft } : item)))
+    setEditingExerciseId(null)
+    setExerciseDraft(null)
+  }
+
+  const deleteExercise = (exerciseId: string) => {
+    if (!window.confirm('Remover este exercício da biblioteca?')) return
+    setExercises((current) => current.filter((exercise) => exercise.id !== exerciseId))
+    setWorkouts((current) =>
+      current.map((workout) => ({
+        ...workout,
+        exercises: workout.exercises.filter((item) => item.exerciseId !== exerciseId),
+      })),
+    )
+    if (selectedExerciseId === exerciseId) setSelectedExerciseId(exercises[0]?.id ?? null)
   }
 
   const createWorkout = () => {
@@ -208,7 +265,6 @@ function App() {
       createdAt: new Date().toISOString(),
       exercises: [],
     }
-
     setWorkouts((current) => [workout, ...current])
     setSelectedWorkoutId(workout.id)
   }
@@ -221,14 +277,12 @@ function App() {
       createdAt: new Date().toISOString(),
       exercises: workout.exercises.map((exercise) => ({ ...exercise, id: `${exercise.id}-copy-${Date.now()}` })),
     }
-
     setWorkouts((current) => [duplicate, ...current])
     setSelectedWorkoutId(duplicate.id)
   }
 
   const startWorkout = () => {
     if (!selectedWorkout || selectedWorkout.exercises.length === 0) return
-
     setIsWorkoutActive(true)
     setPhase('running')
     setCurrentExerciseIndex(0)
@@ -244,7 +298,6 @@ function App() {
 
   const completeCurrentSet = () => {
     if (!selectedWorkout || !currentExercise) return
-
     const remainingSets = currentExercise.sets - currentSetIndex
     if (remainingSets <= 0) {
       const nextExerciseIndex = currentExerciseIndex + 1
@@ -283,11 +336,12 @@ function App() {
   const exportBackup = () => {
     const payload = {
       exportedAt: new Date().toISOString(),
+      profile,
+      settings,
       exercises,
       workouts,
       sessions,
     }
-
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -304,11 +358,11 @@ function App() {
     try {
       const text = await file.text()
       const payload = JSON.parse(text)
-
       if (!payload || !Array.isArray(payload.exercises) || !Array.isArray(payload.workouts)) {
         throw new Error('Arquivo inválido')
       }
-
+      if (payload.profile && payload.profile.name) setProfile(payload.profile)
+      if (payload.settings) setSettings({ ...defaultSettings, ...payload.settings })
       setExercises(payload.exercises)
       setWorkouts(payload.workouts)
       setSessions(Array.isArray(payload.sessions) ? payload.sessions : [])
@@ -321,12 +375,9 @@ function App() {
   }
 
   const resetLocalData = () => {
-    const confirmed = window.confirm(
-      'Apagar todos os dados locais? Isso removerá treinos, histórico e exercícios personalizados.',
-    )
-
-    if (!confirmed) return
-
+    if (!window.confirm('Apagar todos os dados locais?')) return
+    setProfile({ ...defaultProfile, updatedAt: new Date().toISOString() })
+    setSettings(defaultSettings)
     setExercises(initialExercises)
     setWorkouts([defaultWorkout])
     setSessions([])
@@ -340,18 +391,50 @@ function App() {
     }
   }, [])
 
+  const editExercise = (exercise: Exercise) => {
+    setExerciseDraft(exercise)
+    setEditingExerciseId(exercise.id)
+  }
+
+  const topGreeting = profile.name ? `Olá, ${profile.name} 👋` : 'Olá! 👋'
+  const workoutProgress = selectedWorkout
+    ? Math.min(100, Math.round(((currentExerciseIndex + (phase === 'rest' ? 0.5 : 0)) / Math.max(selectedWorkout.exercises.length, 1)) * 100))
+    : 0
+
+  const setDraftAttribution = (field: keyof NonNullable<Exercise['attribution']>, value: string) => {
+    setExerciseDraft((current) => {
+      if (!current) return current
+
+      const attribution = current.attribution ?? {
+        creator: '',
+        creatorUrl: '',
+        license: '',
+        licenseUrl: '',
+        sourceName: '',
+        sourceUrl: '',
+        sourceLicense: '',
+        sourceLicenseUrl: '',
+        changes: '',
+      }
+
+      return {
+        ...current,
+        attribution: { ...attribution, [field]: value } as NonNullable<Exercise['attribution']>,
+      }
+    })
+  }
+
+  const demoModeActive = settings.demoMode !== 'hidden'
+  const demoCompact = settings.demoMode === 'compact'
+
   return (
     <div className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Olá!</p>
-          <h1>Seu treino de hoje</h1>
+          <p className="eyebrow">{profile.name ? 'Perfil' : 'Olá!'}</p>
+          <h1>{topGreeting}</h1>
         </div>
-        <button
-          className="theme-toggle"
-          onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
-          aria-label="Alternar tema"
-        >
+        <button className="theme-toggle" onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
       </header>
@@ -361,24 +444,23 @@ function App() {
           <>
             {isWorkoutActive && selectedWorkout && currentExercise ? (
               <section className="execution-card card">
-                <p className="eyebrow">{selectedWorkout.name}</p>
+                <div className="execution-header">
+                  <p className="eyebrow">{selectedWorkout.name}</p>
+                  <div className="progress-track"><span style={{ width: `${workoutProgress}%` }} /></div>
+                </div>
+
+                {demoModeActive && (
+                  <div className={`exercise-media ${demoCompact ? 'compact' : ''}`}>
+                    <img src={selectedExercise?.videoFrames?.[frameIndex] ?? selectedExercise?.imageUrl ?? '/icons.svg'} alt={currentExercise.name} />
+                  </div>
+                )}
+
                 <h2>{currentExercise.name}</h2>
-
                 <div className="series-badge">Série {currentSetIndex} de {currentExercise.sets}</div>
-
                 <div className="stats-panel execution-stats">
-                  <div>
-                    <span>Repetições</span>
-                    <strong>{currentExercise.reps}</strong>
-                  </div>
-                  <div>
-                    <span>Carga</span>
-                    <strong>{currentExercise.load} kg</strong>
-                  </div>
-                  <div>
-                    <span>Tempo</span>
-                    <strong>{formatSeconds(elapsedSeconds)}</strong>
-                  </div>
+                  <div><span>Grupo</span><strong>{selectedExercise?.muscleGroup ?? currentExercise.name}</strong></div>
+                  <div><span>Carga</span><strong>{currentExercise.load} kg</strong></div>
+                  <div><span>Tempo</span><strong>{formatSeconds(elapsedSeconds)}</strong></div>
                 </div>
 
                 {phase === 'rest' ? (
@@ -395,40 +477,18 @@ function App() {
                 )}
 
                 <div className="execution-actions">
-                  {phase === 'running' && (
-                    <button className="primary-button" onClick={completeCurrentSet}>
-                      ✓ CONCLUIR SÉRIE
-                    </button>
-                  )}
-
-                  {phase === 'paused' && (
-                    <button className="primary-button" onClick={togglePause}>
-                      CONTINUAR TREINO
-                    </button>
-                  )}
-
+                  {phase === 'running' && <button className="primary-button" onClick={completeCurrentSet}>✓ CONCLUIR SÉRIE</button>}
+                  {phase === 'paused' && <button className="primary-button" onClick={togglePause}>CONTINUAR TREINO</button>}
                   {phase === 'rest' && (
                     <>
-                      <button className="primary-button" onClick={() => addRest(30)}>
-                        +30s
-                      </button>
-                      <button className="secondary-button" onClick={() => setPhase('running')}>
-                        PULAR
-                      </button>
+                      <button className="primary-button" onClick={() => addRest(30)}>+30s</button>
+                      <button className="secondary-button" onClick={() => setPhase('running')}>PULAR DESCANSO</button>
                     </>
                   )}
-
                   {(phase === 'running' || phase === 'paused') && (
-                    <button className="ghost-button" onClick={togglePause}>
-                      {phase === 'running' ? 'PAUSAR' : 'CONTINUAR'}
-                    </button>
+                    <button className="ghost-button" onClick={togglePause}>{phase === 'running' ? 'PAUSAR' : 'CONTINUAR'}</button>
                   )}
-
-                  {phase === 'finished' && (
-                    <button className="primary-button" onClick={() => setActiveTab('evolucao')}>
-                      VER RESUMO
-                    </button>
-                  )}
+                  {phase === 'finished' && <button className="primary-button" onClick={() => setActiveTab('evolucao')}>VER RESUMO</button>}
                 </div>
               </section>
             ) : (
@@ -438,49 +498,36 @@ function App() {
                   <h2>{selectedWorkout?.name ?? 'Treino vazio'}</h2>
                   <p>{selectedWorkout?.description ?? 'Crie seu primeiro treino'}</p>
                   <small>
-                    {selectedWorkout?.exercises.length ?? 0} exercícios ·{' '}
-                    {selectedWorkout?.exercises.reduce((total, item) => total + item.sets, 0) ?? 0} séries
+                    {selectedWorkout?.exercises.length ?? 0} exercícios · {selectedWorkout?.exercises.reduce((total, item) => total + item.sets, 0) ?? 0} séries
                   </small>
                 </div>
-                <button className="primary-button" onClick={startWorkout}>
-                  INICIAR TREINO
-                </button>
+                {selectedExercise && demoModeActive && (
+                  <div className={`exercise-media ${demoCompact ? 'compact' : ''}`}>
+                    <img src={selectedExercise.videoFrames?.[frameIndex] ?? selectedExercise.imageUrl ?? '/icons.svg'} alt={selectedExercise.name} />
+                  </div>
+                )}
+                <button className="primary-button" onClick={startWorkout}>INICIAR TREINO</button>
               </section>
             )}
 
             <section className="section-block">
               <h3>Treinos recentes</h3>
               <div className="list-stack">
-                {sessions.length ? (
-                  sessions.slice(0, 3).map((session) => (
-                    <div key={session.id} className="mini-card card">
-                      <div>
-                        <strong>{session.workoutName}</strong>
-                        <span>
-                          {new Date(session.date).toLocaleDateString('pt-BR')} · {session.durationMinutes} min
-                        </span>
-                      </div>
+                {sessions.length ? sessions.slice(0, 3).map((session) => (
+                  <div key={session.id} className="mini-card card">
+                    <div>
+                      <strong>{session.workoutName}</strong>
+                      <span>{new Date(session.date).toLocaleDateString('pt-BR')} · {session.durationMinutes} min</span>
                     </div>
-                  ))
-                ) : (
-                  <div className="empty-state card">Nenhum treino registrado ainda.</div>
-                )}
+                  </div>
+                )) : <div className="empty-state card">Nenhum treino registrado ainda.</div>}
               </div>
             </section>
 
             <section className="metrics grid-3">
-              <div className="metric card">
-                <label>Volume total</label>
-                <strong>{totalVolume} kg</strong>
-              </div>
-              <div className="metric card">
-                <label>Melhores marcas</label>
-                <strong>{Math.max(...sessions.map((session) => session.volume), 0)} kg</strong>
-              </div>
-              <div className="metric card">
-                <label>Consistência</label>
-                <strong>{sessions.length} treinos</strong>
-              </div>
+              <div className="metric card"><label>Volume total</label><strong>{totalVolume} kg</strong></div>
+              <div className="metric card"><label>Melhores marcas</label><strong>{Math.max(...sessions.map((session) => session.volume), 0)} kg</strong></div>
+              <div className="metric card"><label>Consistência</label><strong>{sessions.length} treinos</strong></div>
             </section>
           </>
         )}
@@ -490,38 +537,16 @@ function App() {
             <section className="section-block">
               <div className="section-header">
                 <h3>Treinos</h3>
-                <button className="ghost-button" onClick={createWorkout}>
-                  Novo treino
-                </button>
+                <button className="ghost-button" onClick={createWorkout}>Novo treino</button>
               </div>
               <div className="list-stack">
                 {workouts.map((workout) => (
-                  <div
-                    key={workout.id}
-                    className={`card workout-card ${selectedWorkoutId === workout.id ? 'active' : ''}`}
-                    onClick={() => setSelectedWorkoutId(workout.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        setSelectedWorkoutId(workout.id)
-                      }
-                    }}
-                  >
-                    <div>
-                      <strong>{workout.name}</strong>
-                      <span>{workout.exercises.length} exercícios</span>
-                    </div>
+                  <div key={workout.id} className={`card workout-card ${selectedWorkoutId === workout.id ? 'active' : ''}`} onClick={() => setSelectedWorkoutId(workout.id)} role="button" tabIndex={0} onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') setSelectedWorkoutId(workout.id)
+                  }}>
+                    <div><strong>{workout.name}</strong><span>{workout.exercises.length} exercícios</span></div>
                     <div className="inline-actions">
-                      <button
-                        className="small-button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          duplicateWorkout(workout)
-                        }}
-                      >
-                        Duplicar
-                      </button>
+                      <button className="small-button" onClick={(event) => { event.stopPropagation(); duplicateWorkout(workout) }}>Duplicar</button>
                     </div>
                   </div>
                 ))}
@@ -532,176 +557,85 @@ function App() {
               <section className="section-block">
                 <div className="card workout-editor">
                   <label className="field-label">Nome do treino</label>
-                  <input
-                    className="search"
-                    value={selectedWorkout.name}
-                    onChange={(event) =>
-                      setWorkouts((current) =>
-                        current.map((workout) =>
-                          workout.id === selectedWorkout.id ? { ...workout, name: event.target.value } : workout,
-                        ),
-                      )
-                    }
-                  />
+                  <input className="search" value={selectedWorkout.name} onChange={(event) => setWorkouts((current) => current.map((workout) => workout.id === selectedWorkout.id ? { ...workout, name: event.target.value } : workout))} />
 
                   <label className="field-label">Descrição</label>
-                  <textarea
-                    className="search textarea"
-                    value={selectedWorkout.description}
-                    onChange={(event) =>
-                      setWorkouts((current) =>
-                        current.map((workout) =>
-                          workout.id === selectedWorkout.id
-                            ? { ...workout, description: event.target.value }
-                            : workout,
-                        ),
-                      )
-                    }
-                  />
+                  <textarea className="search textarea" value={selectedWorkout.description} onChange={(event) => setWorkouts((current) => current.map((workout) => workout.id === selectedWorkout.id ? { ...workout, description: event.target.value } : workout))} />
 
                   <div className="exercise-list">
-                    {selectedWorkout.exercises.length ? (
-                      selectedWorkout.exercises.map((exercise) => (
-                        <div key={exercise.id} className="exercise-row card">
-                          <div>
-                            <strong>{exercise.name}</strong>
-                            <span>
-                              {exercise.sets} séries · {exercise.reps} rep · {exercise.load} kg · {exercise.rest}s
-                            </span>
-                          </div>
-                          <div className="inline-actions">
-                            <button
-                              className="small-button"
-                              onClick={() => setEditingExerciseId(editingExerciseId === exercise.id ? null : exercise.id)}
-                            >
-                              Editar
-                            </button>
-                            <button
-                              className="small-button danger"
-                              onClick={() => removeWorkoutExercise(exercise.id)}
-                            >
-                              Remover
-                            </button>
-                          </div>
+                    {selectedWorkout.exercises.length ? selectedWorkout.exercises.map((exercise) => (
+                      <div key={exercise.id} className="exercise-row card">
+                        <div><strong>{exercise.name}</strong><span>{exercise.sets} séries · {exercise.reps} rep · {exercise.load} kg · {exercise.rest}s</span></div>
+                        <div className="inline-actions">
+                          <button className="small-button" onClick={() => setEditingExerciseId(editingExerciseId === exercise.id ? null : exercise.id)}>Editar</button>
+                          <button className="small-button danger" onClick={() => removeWorkoutExercise(exercise.id)}>Remover</button>
                         </div>
-                      ))
-                    ) : (
-                      <div className="empty-state card">Nenhum exercício adicionado ao treino.</div>
-                    )}
+                      </div>
+                    )) : <div className="empty-state card">Nenhum exercício adicionado ao treino.</div>}
                   </div>
 
-                  {editingExerciseId &&
-                    (() => {
-                      const exerciseToEdit = selectedWorkout.exercises.find((exercise) => exercise.id === editingExerciseId)
-                      if (!exerciseToEdit) return null
-
-                      return (
-                        <div className="editing-panel card">
-                          <strong>{exerciseToEdit.name}</strong>
-                          <div className="field-grid">
-                            <label>
-                              Séries
-                              <input
-                                type="number"
-                                value={exerciseToEdit.sets}
-                                onChange={(event) =>
-                                  updateWorkoutExercise(exerciseToEdit.id, {
-                                    sets: Number(event.target.value || 1),
-                                  })
-                                }
-                              />
-                            </label>
-                            <label>
-                              Repetições
-                              <input
-                                type="number"
-                                value={exerciseToEdit.reps}
-                                onChange={(event) =>
-                                  updateWorkoutExercise(exerciseToEdit.id, {
-                                    reps: Number(event.target.value || 1),
-                                  })
-                                }
-                              />
-                            </label>
-                            <label>
-                              Carga
-                              <input
-                                type="number"
-                                value={exerciseToEdit.load}
-                                onChange={(event) =>
-                                  updateWorkoutExercise(exerciseToEdit.id, {
-                                    load: Number(event.target.value || 0),
-                                  })
-                                }
-                              />
-                            </label>
-                            <label>
-                              Descanso
-                              <input
-                                type="number"
-                                value={exerciseToEdit.rest}
-                                onChange={(event) =>
-                                  updateWorkoutExercise(exerciseToEdit.id, {
-                                    rest: Number(event.target.value || 30),
-                                  })
-                                }
-                              />
-                            </label>
-                          </div>
+                  {editingExerciseId && (() => {
+                    const exerciseToEdit = selectedWorkout.exercises.find((exercise) => exercise.id === editingExerciseId)
+                    if (!exerciseToEdit) return null
+                    return (
+                      <div className="editing-panel card">
+                        <strong>{exerciseToEdit.name}</strong>
+                        <div className="field-grid">
+                          <label>Séries<input type="number" value={exerciseToEdit.sets} onChange={(event) => updateWorkoutExercise(exerciseToEdit.id, { sets: Number(event.target.value || 1) })} /></label>
+                          <label>Repetições<input type="number" value={exerciseToEdit.reps} onChange={(event) => updateWorkoutExercise(exerciseToEdit.id, { reps: Number(event.target.value || 1) })} /></label>
+                          <label>Carga<input type="number" value={exerciseToEdit.load} onChange={(event) => updateWorkoutExercise(exerciseToEdit.id, { load: Number(event.target.value || 0) })} /></label>
+                          <label>Descanso<input type="number" value={exerciseToEdit.rest} onChange={(event) => updateWorkoutExercise(exerciseToEdit.id, { rest: Number(event.target.value || 30) })} /></label>
                         </div>
-                      )
-                    })()}
+                      </div>
+                    )
+                  })()}
                 </div>
               </section>
             )}
 
             <section className="section-block">
-              <div className="section-header">
-                <h3>Biblioteca</h3>
-              </div>
-              <input
-                className="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Pesquisar exercício..."
-              />
+              <div className="section-header"><h3>Biblioteca</h3></div>
+              <input className="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar exercício..." />
               <div className="list-stack library-list">
                 {filteredExercises.map((exercise) => (
                   <div key={exercise.id} className="exercise-row card">
-                    <div>
-                      <strong>{exercise.name}</strong>
-                      <span>
-                        {exercise.category} · {exercise.equipment}
-                      </span>
-                    </div>
+                    <div><strong>{exercise.name}</strong><span>{exercise.category} · {exercise.equipment}</span></div>
                     <div className="inline-actions">
-                      <button className="small-button" onClick={() => setSelectedExerciseId(exercise.id)}>
-                        Ver
-                      </button>
-                      <button className="small-button" onClick={() => addExerciseToWorkout(exercise)}>
-                        +
-                      </button>
+                      <button className="small-button" onClick={() => setSelectedExerciseId(exercise.id)}>Ver</button>
+                      <button className="small-button" onClick={() => editExercise(exercise)}>Editar</button>
+                      <button className="small-button" onClick={() => addExerciseToWorkout(exercise)}>+</button>
+                      <button className="small-button danger" onClick={() => deleteExercise(exercise.id)}>Excluir</button>
                     </div>
                   </div>
                 ))}
               </div>
+
               {selectedExercise && (
                 <div className="card exercise-detail">
-                  <strong>{selectedExercise.name}</strong>
-                  <span>
-                    {selectedExercise.category} · {selectedExercise.muscleGroup} · {selectedExercise.type}
-                  </span>
+                  <div className="exercise-media">
+                    <img src={selectedExercise.videoFrames?.[frameIndex % Math.max(selectedExercise.videoFrames.length, 1)] ?? selectedExercise.imageUrl ?? '/icons.svg'} alt={selectedExercise.name} />
+                  </div>
+                  <div className="detail-header">
+                    <strong>{selectedExercise.name}</strong>
+                    <span>{selectedExercise.category} · {selectedExercise.muscleGroup} · {selectedExercise.type}</span>
+                  </div>
                   <p>{selectedExercise.description}</p>
-                  <ul>
-                    {selectedExercise.instructions.map((instruction) => (
-                      <li key={instruction}>{instruction}</li>
-                    ))}
-                  </ul>
+                  <div className="detail-grid">
+                    <div>
+                      <h4>Instruções</h4>
+                      <ul>{selectedExercise.instructions.map((instruction) => <li key={instruction}>{instruction}</li>)}</ul>
+                    </div>
+                    <div>
+                      <h4>Créditos</h4>
+                      <p>{selectedExercise.attribution?.creator ?? 'Fonte local'} · {selectedExercise.attribution?.license ?? 'Uso local'}</p>
+                      {selectedExercise.attribution?.sourceName && <small>{selectedExercise.attribution.sourceName}</small>}
+                      {selectedExercise.attribution?.sourceUrl && <a href={selectedExercise.attribution.sourceUrl} target="_blank" rel="noreferrer">Fonte</a>}
+                    </div>
+                  </div>
                 </div>
               )}
-              <button className="secondary-button" onClick={addCustomExercise}>
-                Criar exercício personalizado
-              </button>
+
+              <button className="secondary-button" onClick={addCustomExercise}>Criar exercício personalizado</button>
             </section>
           </>
         )}
@@ -710,28 +644,14 @@ function App() {
           <section className="section-block">
             <h3>Evolução</h3>
             <div className="stats-panel card">
-              <div>
-                <span>Treinos</span>
-                <strong>{sessions.length}</strong>
-              </div>
-              <div>
-                <span>Volume total</span>
-                <strong>{totalVolume} kg</strong>
-              </div>
-              <div>
-                <span>Volume médio</span>
-                <strong>{sessions.length ? Math.round(totalVolume / sessions.length) : 0} kg</strong>
-              </div>
+              <div><span>Treinos</span><strong>{sessions.length}</strong></div>
+              <div><span>Volume total</span><strong>{totalVolume} kg</strong></div>
+              <div><span>Volume médio</span><strong>{sessions.length ? Math.round(totalVolume / sessions.length) : 0} kg</strong></div>
             </div>
             <div className="history-list list-stack">
               {sessions.map((session) => (
                 <div key={session.id} className="mini-card card">
-                  <div>
-                    <strong>{session.workoutName}</strong>
-                    <span>
-                      {new Date(session.date).toLocaleDateString('pt-BR')} · {session.durationMinutes} min
-                    </span>
-                  </div>
+                  <div><strong>{session.workoutName}</strong><span>{new Date(session.date).toLocaleDateString('pt-BR')} · {session.durationMinutes} min</span></div>
                   <small>{session.volume} kg</small>
                 </div>
               ))}
@@ -742,60 +662,104 @@ function App() {
         {activeTab === 'config' && (
           <section className="section-block config-panel">
             <h3>Configurações</h3>
+
+            <div className="card config-card">
+              <label>Perfil</label>
+              <input className="search" value={profile.name} onChange={(event) => setProfile((current) => ({ ...current, name: event.target.value, updatedAt: new Date().toISOString() }))} placeholder="Digite seu nome" />
+            </div>
+
             <div className="card config-card">
               <label>Preferência de tema</label>
               <div className="segmented">
-                <button className={theme === 'dark' ? 'active' : ''} onClick={() => setTheme('dark')}>
-                  Escuro
-                </button>
-                <button className={theme === 'light' ? 'active' : ''} onClick={() => setTheme('light')}>
-                  Claro
-                </button>
+                <button className={theme === 'dark' ? 'active' : ''} onClick={() => setTheme('dark')}>Escuro</button>
+                <button className={theme === 'light' ? 'active' : ''} onClick={() => setTheme('light')}>Claro</button>
               </div>
             </div>
+
             <div className="card config-card">
-              <label>Descanso padrão</label>
-              <strong>60s</strong>
+              <label>Demonstrações</label>
+              <div className="segmented segmented-column">
+                <button className={settings.demoMode === 'always' ? 'active' : ''} onClick={() => setSettings((current) => ({ ...current, demoMode: 'always' }))}>Sempre mostrar</button>
+                <button className={settings.demoMode === 'compact' ? 'active' : ''} onClick={() => setSettings((current) => ({ ...current, demoMode: 'compact' }))}>Mostrar compactada</button>
+                <button className={settings.demoMode === 'hidden' ? 'active' : ''} onClick={() => setSettings((current) => ({ ...current, demoMode: 'hidden' }))}>Ocultar durante o treino</button>
+              </div>
             </div>
+
+            <div className="card config-card">
+              <label>Wake Lock</label>
+              <button className={`secondary-button ${settings.wakeLockEnabled ? 'enabled' : ''}`} onClick={() => setSettings((current) => ({ ...current, wakeLockEnabled: !current.wakeLockEnabled }))}>{settings.wakeLockEnabled ? 'Desativar tela sempre ativa' : 'Ativar tela sempre ativa'}</button>
+            </div>
+
+            <div className="card config-card"><label>Descanso padrão</label><strong>60s</strong></div>
+
             <div className="card config-card">
               <label>Backup</label>
               <div className="backup-actions">
-                <button className="secondary-button" onClick={exportBackup}>
-                  Exportar dados
-                </button>
-                <label className="file-button secondary-button">
-                  Importar dados
-                  <input type="file" accept="application/json" onChange={importBackup} />
-                </label>
+                <button className="secondary-button" onClick={exportBackup}>Exportar dados</button>
+                <label className="file-button secondary-button">Importar dados<input type="file" accept="application/json" onChange={importBackup} /></label>
               </div>
             </div>
 
             <div className="card config-card danger-card">
               <label>Dados locais</label>
-              <button className="danger-button" onClick={resetLocalData}>
-                Apagar todos os dados
-              </button>
+              <button className="danger-button" onClick={resetLocalData}>Apagar todos os dados</button>
             </div>
           </section>
         )}
       </main>
 
       <nav className="bottom-nav" aria-label="Navegação principal">
-        {[
-          ['inicio', '🏠'],
-          ['treinos', '🏋️'],
-          ['evolucao', '📊'],
-          ['config', '⚙️'],
-        ].map(([key, label]) => (
-          <button
-            key={key}
-            className={activeTab === key ? 'active' : ''}
-            onClick={() => setActiveTab(key as typeof activeTab)}
-          >
-            {label}
-          </button>
+        {[['inicio', '🏠'], ['treinos', '🏋️'], ['evolucao', '📊'], ['config', '⚙️']].map(([key, label]) => (
+          <button key={key} className={activeTab === key ? 'active' : ''} onClick={() => setActiveTab(key as typeof activeTab)}>{label}</button>
         ))}
       </nav>
+
+      {!profile.name && (
+        <div className="profile-overlay" role="dialog" aria-modal="true">
+          <div className="profile-card card">
+            <p className="eyebrow">Bem-vindo</p>
+            <h2>Como podemos chamar você?</h2>
+            <input className="search" value={profile.name} onChange={(event) => setProfile((current) => ({ ...current, name: event.target.value, updatedAt: new Date().toISOString() }))} placeholder="Digite seu nome" />
+            <button className="primary-button" onClick={() => {
+              const trimmed = profile.name.trim()
+              if (!trimmed) return
+              setProfile((current) => ({ ...current, name: trimmed, updatedAt: new Date().toISOString() }))
+            }}>Continuar</button>
+          </div>
+        </div>
+      )}
+
+      {editingExerciseId && exerciseDraft && (
+        <div className="editor-overlay" onClick={() => { setEditingExerciseId(null); setExerciseDraft(null) }}>
+          <div className="editor-modal card" onClick={(event) => event.stopPropagation()}>
+            <div className="editor-header">
+              <h3>Editar exercício</h3>
+              <button className="ghost-button" onClick={() => { setEditingExerciseId(null); setExerciseDraft(null) }}>Fechar</button>
+            </div>
+
+            <div className="editor-grid">
+              <label>Nome<input value={exerciseDraft.name} onChange={(event) => setExerciseDraft((current) => current ? { ...current, name: event.target.value } : current)} /></label>
+              <label>Categoria<input value={exerciseDraft.category} onChange={(event) => setExerciseDraft((current) => current ? { ...current, category: event.target.value } : current)} /></label>
+              <label>Grupo muscular<input value={exerciseDraft.muscleGroup} onChange={(event) => setExerciseDraft((current) => current ? { ...current, muscleGroup: event.target.value } : current)} /></label>
+              <label>Equipamento<input value={exerciseDraft.equipment} onChange={(event) => setExerciseDraft((current) => current ? { ...current, equipment: event.target.value } : current)} /></label>
+              <label>Dificuldade<select value={exerciseDraft.difficulty} onChange={(event) => setExerciseDraft((current) => current ? { ...current, difficulty: event.target.value as Exercise['difficulty'] } : current)}><option value="Iniciante">Iniciante</option><option value="Intermediário">Intermediário</option><option value="Avançado">Avançado</option></select></label>
+              <label>Tipo<select value={exerciseDraft.type} onChange={(event) => setExerciseDraft((current) => current ? { ...current, type: event.target.value as Exercise['type'] } : current)}><option value="Musculação">Musculação</option><option value="Cardio">Cardio</option><option value="Alongamento">Alongamento</option><option value="Funcional">Funcional</option></select></label>
+              <label className="full-width">Descrição<textarea value={exerciseDraft.description} onChange={(event) => setExerciseDraft((current) => current ? { ...current, description: event.target.value } : current)} /></label>
+              <label className="full-width">Instruções<textarea value={exerciseDraft.instructions.join('\n')} onChange={(event) => setExerciseDraft((current) => current ? { ...current, instructions: event.target.value.split(/\n+/).filter(Boolean) } : current)} /></label>
+              <label className="full-width">Dicas<textarea value={exerciseDraft.tips.join('\n')} onChange={(event) => setExerciseDraft((current) => current ? { ...current, tips: event.target.value.split(/\n+/).filter(Boolean) } : current)} /></label>
+              <label className="full-width">Erros<textarea value={exerciseDraft.errors.join('\n')} onChange={(event) => setExerciseDraft((current) => current ? { ...current, errors: event.target.value.split(/\n+/).filter(Boolean) } : current)} /></label>
+              <label className="full-width">URL da imagem<input value={exerciseDraft.imageUrl ?? ''} onChange={(event) => setExerciseDraft((current) => current ? { ...current, imageUrl: event.target.value } : current)} /></label>
+              <label className="full-width">Frames de vídeo (um por linha)<textarea value={(exerciseDraft.videoFrames ?? []).join('\n')} onChange={(event) => setExerciseDraft((current) => current ? { ...current, videoFrames: event.target.value.split(/\n+/).filter(Boolean) } : current)} /></label>
+              <label>Créditos<input value={exerciseDraft.attribution?.creator ?? ''} onChange={(event) => setDraftAttribution('creator', event.target.value)} /></label>
+              <label>Licença<input value={exerciseDraft.attribution?.license ?? ''} onChange={(event) => setDraftAttribution('license', event.target.value)} /></label>
+            </div>
+
+            <div className="editor-actions">
+              <button className="secondary-button" onClick={commitExerciseEdit}>Salvar exercício</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
