@@ -63,6 +63,7 @@ export type Workout = {
   name: string
   description: string
   goal: string
+  dayOfWeek?: string
   exercises: WorkoutExercise[]
   createdAt: string
 }

@@ -39,6 +39,36 @@ const defaultSettings: AppSettings = {
   wakeLockEnabled: false,
 }
 
+const WEEK_DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+
+const readySeriesGuide = Array.from({ length: 50 }, (_, index) => {
+  const presets = [
+    ['Agachamento livre', 'Pernas', 4, 8, 35, 90],
+    ['Supino reto', 'Peito', 4, 8, 30, 90],
+    ['Levantamento terra', 'Costas', 4, 6, 45, 120],
+    ['Remada curvada', 'Costas', 3, 10, 25, 75],
+    ['Desenvolvimento', 'Ombros', 4, 8, 20, 75],
+    ['Puxada alta', 'Costas', 3, 10, 25, 60],
+    ['Cadeira extensora', 'Pernas', 4, 12, 20, 60],
+    ['Rosca direta', 'Braços', 3, 12, 15, 45],
+    ['Crucifixo', 'Peito', 3, 12, 14, 60],
+    ['Leg press', 'Pernas', 4, 10, 40, 75],
+  ] as const
+
+  const [name, focus, sets, reps, load, rest] = presets[index % presets.length]
+
+  return {
+    id: `series-${index + 1}`,
+    name: `${name} ${index + 1}`,
+    focus,
+    sets,
+    reps,
+    load: load + Math.floor(index / 5) * 5,
+    rest,
+    imageUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=80',
+  }
+})
+
 const createExercise = (): Exercise => ({
   id: `custom-${Date.now()}`,
   name: 'Novo exercício',
@@ -262,11 +292,33 @@ function App() {
       name: 'Novo treino',
       description: 'Treino personalizado',
       goal: 'Geral',
+      dayOfWeek: WEEK_DAYS[0],
       createdAt: new Date().toISOString(),
       exercises: [],
     }
     setWorkouts((current) => [workout, ...current])
     setSelectedWorkoutId(workout.id)
+  }
+
+  const applyReadySeries = (series: (typeof readySeriesGuide)[number]) => {
+    if (!selectedWorkout) return
+
+    const item: WorkoutExercise = {
+      id: `${selectedWorkout.id}-ready-${series.id}-${Date.now()}`,
+      exerciseId: series.id,
+      name: series.name,
+      sets: series.sets,
+      reps: series.reps,
+      load: series.load,
+      rest: series.rest,
+      notes: `Guia rápido • ${series.focus}`,
+    }
+
+    setWorkouts((current) =>
+      current.map((workout) =>
+        workout.id === selectedWorkout.id ? { ...workout, exercises: [...workout.exercises, item] } : workout,
+      ),
+    )
   }
 
   const duplicateWorkout = (workout: Workout) => {
@@ -544,7 +596,10 @@ function App() {
                   <div key={workout.id} className={`card workout-card ${selectedWorkoutId === workout.id ? 'active' : ''}`} onClick={() => setSelectedWorkoutId(workout.id)} role="button" tabIndex={0} onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') setSelectedWorkoutId(workout.id)
                   }}>
-                    <div><strong>{workout.name}</strong><span>{workout.exercises.length} exercícios</span></div>
+                    <div>
+                      <strong>{workout.name}</strong>
+                      <span>{workout.exercises.length} exercícios {workout.dayOfWeek ? `· ${workout.dayOfWeek}` : ''}</span>
+                    </div>
                     <div className="inline-actions">
                       <button className="small-button" onClick={(event) => { event.stopPropagation(); duplicateWorkout(workout) }}>Duplicar</button>
                     </div>
@@ -561,6 +616,22 @@ function App() {
 
                   <label className="field-label">Descrição</label>
                   <textarea className="search textarea" value={selectedWorkout.description} onChange={(event) => setWorkouts((current) => current.map((workout) => workout.id === selectedWorkout.id ? { ...workout, description: event.target.value } : workout))} />
+
+                  <div className="day-selector">
+                    <label className="field-label">Dia da semana</label>
+                    <div className="day-grid">
+                      {WEEK_DAYS.map((day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          className={selectedWorkout.dayOfWeek === day ? 'active' : ''}
+                          onClick={() => setWorkouts((current) => current.map((workout) => workout.id === selectedWorkout.id ? { ...workout, dayOfWeek: day } : workout))}
+                        >
+                          {day.slice(0, 3)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
                   <div className="exercise-list">
                     {selectedWorkout.exercises.length ? selectedWorkout.exercises.map((exercise) => (
@@ -596,10 +667,33 @@ function App() {
             <section className="section-block">
               <div className="section-header"><h3>Biblioteca</h3></div>
               <input className="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar exercício..." />
+              <div className="quick-series-block">
+                <div className="section-header"><h4>Guia de 50 séries prontas</h4></div>
+                <div className="quick-series-grid">
+                  {readySeriesGuide.slice(0, 12).map((series) => (
+                    <button key={series.id} type="button" className="quick-series-card" onClick={() => applyReadySeries(series)}>
+                      <img src={series.imageUrl} alt={series.name} />
+                      <div>
+                        <strong>{series.name}</strong>
+                        <span>{series.sets}x{series.reps} · {series.rest}s</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="list-stack library-list">
                 {filteredExercises.map((exercise) => (
                   <div key={exercise.id} className="exercise-row card">
-                    <div><strong>{exercise.name}</strong><span>{exercise.category} · {exercise.equipment}</span></div>
+                    <div className="exercise-row-main">
+                      <div className="exercise-thumb">
+                        <img src={exercise.imageUrl ?? exercise.videoFrames?.[0] ?? 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=80'} alt={exercise.name} />
+                      </div>
+                      <div>
+                        <strong>{exercise.name}</strong>
+                        <span>{exercise.category} · {exercise.equipment}</span>
+                      </div>
+                    </div>
                     <div className="inline-actions">
                       <button className="small-button" onClick={() => setSelectedExerciseId(exercise.id)}>Ver</button>
                       <button className="small-button" onClick={() => editExercise(exercise)}>Editar</button>
